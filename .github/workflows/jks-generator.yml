@@ -1,1 +1,42 @@
 
+name: Keystore Generator
+
+on:
+  workflow_dispatch:
+    inputs:
+      key_alias:
+        description: 'Key Alias'
+        required: true
+        default: ''
+      key_password:
+        description: 'Keystore Password'
+        required: true
+        default: ''
+
+jobs:
+  generate_jks:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Run Build Process
+      run: |
+        keytool -genkey -v -keystore release.jks \
+          -keyalg RSA -keysize 2048 -validity 10000 \
+          -alias "${{ github.event.inputs.key_alias }}" \
+          -storepass "${{ github.event.inputs.key_password }}" \
+          -dname "CN=Safin, OU=Development, O=XSDev, L=Dhaka, S=Dhaka, C=BD"
+        
+        keytool -list -v -keystore release.jks \
+          -storepass "${{ github.event.inputs.key_password }}" > release.txt
+
+    - name: Upload Keystore and Fingerprints
+      uses: actions/upload-artifact@v4
+      with:
+        name: XSRelease-Keystore-Package
+        path: |
+          release.jks
+          release.txt
+        retention-days: 5
