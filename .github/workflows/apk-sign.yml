@@ -1,0 +1,55 @@
+name: APK Signer
+
+on:
+  workflow_dispatch:
+    inputs:
+      key_alias:
+        description: 'Key Alias'
+        required: true
+        default: ''
+      key_password:
+        description: 'Keystore Password'
+        required: true
+        default: ''
+
+jobs:
+  sign_apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify Input Files
+        run: |
+          if [ ! -f "my-app.apk" ]; then
+            echo "ERROR: 'my-app.apk' not found in repository root!"
+            exit 1
+          fi
+          if [ ! -f "release.jks" ]; then
+            echo "ERROR: 'release.jks' not found in repository root!"
+            exit 1
+          fi
+
+      - name: Align and Sign APK
+        run: |
+          mkdir -p output_apk
+          
+          $ANDROID_HOME/build-tools/34.0.0/zipalign -v 4 my-app.apk output_apk/aligned.apk
+          
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+            --ks release.jks \
+            --ks-key-alias "${{ github.event.inputs.key_alias }}" \
+            --ks-pass pass:"${{ github.event.inputs.key_password }}" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --out output_apk/signed-app.apk \
+            output_apk/aligned.apk
+
+      - name: Upload Signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Signed-APK
+          path: output_apk/signed-app.apk
+          compression-level: 0
